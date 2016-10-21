@@ -1,0 +1,163 @@
+---
+title: "McNally_6_Linear_Models"
+author: "Sean McNally"
+date: "October 17, 2016"
+output: html_document
+---
+
+###Whitlock and Schluter Questions from Chapter 17
+
+###For the following, please use R to answer these questions on linear regression in W&S. Make sure you go through the full workflow of fitting and evaluating a linear model as we did in class, and point out any problems with inferences in addition to answering the questions.
+
+###So, answer 19, 24, and 25.
+
+###Data is provided in the repository.
+
+####19. You might think that increasing the resources available would elevate the number of plante species that an area could support otherwise. The data in the accompanying table are from the Park Grass Experiment at Rothamsted Expertimental Station in the U.K., where grassland field plots have been fertilied annually for the past 150 years (collated by Harpole and Tilman 2007). The number of plant speices recorded in 10 plots is given in response to the number of different nutrient types added in the fertilizer treatment (nutrient types include nitrogen, phosphorus, potassium,and so on).   
+**a. Draw a scatter plot of these data. Which variable should be the explanatory variable (X), and which shoud be the response varible (Y)?**  
+explantory variable = nutrients  
+response variable = species 
+```{r, echo=FALSE}
+#load libraries
+library(dplyr)
+library(broom)
+library(modelr)
+library(ggplot2)
+library(readr)
+```
+
+```{r, echo=TRUE}
+#Load data
+plant_nutrients <- read_csv('./data/chap17q19GrasslandNutrientsPlantSpecies.csv')
+
+#visualize 
+plant_nutrients_plot <- ggplot(data = plant_nutrients, mapping = aes(x = `nutrients`, y = `species`)) + 
+  geom_point() + theme_bw()
+plant_nutrients_plot
+```
+
+**b. What is the rate of change in the number of plant species supported per nutrient type added?**
+```{r, echo=TRUE}
+#fit model 
+plant_nutrients_lm <- lm(nutrients ~ species, data = plant_nutrients)
+
+#what is this object?
+plant_nutrients_lm
+
+#assumptions
+plot(plant_nutrients_lm, which=1)
+plot(plant_nutrients_lm, which=2)
+
+#t-tests of parameters
+summary(plant_nutrients_lm)
+```
+Rate of change in number of plant species supported per nutrients type added is -3.040. Meaning that everytime a nutrient is added the # of plants supporrted decreases by -3.040 with a standard error of 0.05281. 
+
+**c. Add the least-squares regression line to your scatter plot. What fraction of the variation in the number of plant species is "explained" by the number of nutrients added?**
+```{r, echo=TRUE}
+#plot with line
+plant_nutrients_plot +
+  stat_smooth(method=lm, formula=y~x)
+```
+r2 = 0.536, which is the fraction of variation in the number of plant species "explanied" by the number of nutrients added. 
+
+**d. Test the null hypothesis of no treatment effect on the number of plant species**
+```{r, echo=TRUE}
+#f-tests of model
+anova(plant_nutrients_lm)
+```
+Reject the null hypothesis because our p value is 0.01607 or less than 0.05. 
+
+####24. How do we estimate a regression relationship when each subject is measured multiple times over a series of X-values? The easiest approach is to use a summary slope for each individual and then calculate the average slope. Green et al. (2001) dealth with exactly this type of problem in their study of macaroni penguins excerised at a range of speeds, and its oxygen consumption was measured in relation to its heart rate (a proxy for metablic rate). The graph provided shows the relatonship for just two individual penguins. The following table lists the estimated regression slopes for each of 24 penguins in three categories.
+```{r, echo=TRUE}
+#Load data
+penguins <- read_csv('./data/chap17q24PenguinTreadmill.csv')
+
+#visualize 
+penguins_plot <- ggplot(data = penguins, mapping = aes(x = `group`, y = `slope`)) + 
+  geom_point() + theme_bw()
+penguins_plot
+```
+
+**a. Calculate the mean, standard deviation, and sample size of the slope for penguins in each of the three groups. Display your results in a table.**
+```{r, echo=TRUE}
+#Group and calculate mean, sd, and sample size
+penguins_group <- penguins %>%
+  group_by(group) %>%
+  mutate(mean = mean(slope), sd = sd(slope), samp_size = length(group))
+```
+
+**b. Test whether the means of the slopes are equal between the three groups**
+```{r, echo=TRUE}
+#fit model 
+penguins_lm <- lm(slope ~ group, data = penguins)
+
+#assumptions
+plot(penguins_lm, which=1)
+plot(penguins_lm, which=2)
+
+#t-tests of parameters
+summary(penguins_lm)
+
+#f-tests of model
+anova(penguins_lm)
+
+#distribution of residuals 
+res_penguins <- residuals(penguins_lm)
+
+#visualize
+hist(res_penguins)
+penguins_box_plot <- ggplot(data = penguins, mapping = aes(x = `group`, y = `slope`)) + 
+  geom_boxplot() + theme_bw()
+penguins_box_plot
+```
+
+####25. Many species of beetle produce large horns that are used as weapons or shields. The resources required to build these horns, though, might be diverted from ohter useful structures. To test this, Emlen(2001) measured the sizes of wings and horns in 19 females of the beetle speces *Onthophagus aggittarius*. Both traites were scaled for body-size differences and hence are referred to as relaive horn and wing sizes. Emlen's data are shown in the following scatter plot along with the least square regression line (Y = -0.13 - 123.6X). We used the regression line to predict the horn lengths at each 19 observed horn sizes. These are given in the following table. 
+```{r, echo=TRUE}
+beetles <- read_csv('./data/chap17q25BeetleWingsAndHorns.csv')
+beetles
+```
+
+**a. Use these results to calculate the residuals.**
+```{r, echo=TRUE}
+#initial visualization to determine if lm is appropriate
+beetles_plot <- ggplot(data = beetles , mapping = aes(x = `hornSize`, y = `wingMass`)) + 
+  geom_point() + theme_bw()
+beetles_plot
+#fit model 
+beetles_lm <- lm(hornSize ~ wingMass, data = beetles)
+beetles_lm
+#Test your assumption
+plot(beetles_lm, which = 1)
+plot(beetles_lm, which = 2)
+
+#t-test of parameters
+summary(beetles_lm)
+#f-test of model
+anova(beetles_lm)
+#visualize with lm
+beetles_fit_plot <- beetles_plot + 
+  stat_smooth(method = "lm") +
+  theme_bw()
+beetles_fit_plot
+#calculate/add residulas 
+beetles <- beetles %>%
+  add_residuals(beetles_lm) %>%
+  add_predictions(beetles_lm) 
+  head(beetles)
+```
+
+**b. Use your results from part (a) to produce a residual plot.**
+```{r, echo=TRUE}
+#distribution of residuals 
+qplot(pred, resid, data = beetles) +
+  stat_smooth(method = "lm") + theme_bw()
+```
+
+**c. Use the graph provided and your residual plot to evaluate the main assumptions of linear regression.**
+
+hornSize and wingMass have a negative slope. Meaning as relative horn size increases wing mass decreases. The residual plot created shows that the error calculated does not fall along our modeled (lm) line. This could be for many reasons. If the residuals were negilgible they should have fallen within our estimated linear model of regression.
+
+**d. In light of your conclusions in part (c), what steps should be taken?**
+Because our residuals of our model are high we have less power (?). Maybe we should increase our sample size in order to get a better estimate of our mean which would thus reduce our error and further reduce our residuals.
+
